@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content ရေးသားသူ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Padauk:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Padauk', 'Inter', sans-serif;
+        }
+        /* For loading spinner */
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-3xl mx-auto p-4 sm:p-6 md:p-8 bg-gray-800 rounded-2xl shadow-2xl">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-cyan-400">AI Content ရေးသားသူ</h1>
+            <p class="text-gray-400 mt-2">သင်လိုချင်တဲ့ အကြောင်းအရာကို ရေးထည့်ပြီး AI ရဲ့အစွမ်းကို ကြည့်လိုက်ပါ။</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="mb-6">
+            <label for="prompt-input" class="block mb-2 text-sm font-medium text-gray-300">သင်ရေးစေချင်သော အကြောင်းအရာ</label>
+            <textarea id="prompt-input" rows="4" class="w-full p-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-cyan-500 focus:border-cyan-500" placeholder="ဥပမာ - မြန်မာနိုင်ငံရဲ့ အထင်ကရနေရာတွေအကြောင်း ဆောင်းပါးတစ်ပုဒ် ..."></textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button id="generate-btn" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Content ရေးသားခိုင်းမည်
+            </button>
+            <button id="clear-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                ရှင်းလင်းမည်
+            </button>
+        </div>
+
+        <!-- Result Section -->
+        <div class="mt-8">
+            <h2 class="text-2xl font-semibold text-gray-200 mb-4">AI မှ ရေးသားထားသော Content</h2>
+            <div id="loader" class="hidden flex justify-center items-center p-8">
+                <div class="loader"></div>
+            </div>
+            <div id="result-container" class="w-full p-4 bg-gray-900 rounded-lg min-h-[150px] text-gray-300 whitespace-pre-wrap border border-gray-700">
+                <!-- AI generated content will appear here -->
+            </div>
+             <button id="copy-btn" class="hidden mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                စာသားများကူးယူမည်
+            </button>
+            <div id="copy-success" class="hidden mt-2 text-center text-green-400">ကူးယူပြီးပါပြီ!</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-sm mt-8 pt-6 border-t border-gray-700">
+            <p>&copy; <span id="current-year"></span> Developed by SJtech</p>
+        </div>
+    </div>
+
+    <script>
+        const generateBtn = document.getElementById('generate-btn');
+        const promptInput = document.getElementById('prompt-input');
+        const resultContainer = document.getElementById('result-container');
+        const loader = document.getElementById('loader');
+        const copyBtn = document.getElementById('copy-btn');
+        const copySuccess = document.getElementById('copy-success');
+        const clearBtn = document.getElementById('clear-btn');
+
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`; // Key will be provided by the environment
+
+        generateBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                resultContainer.innerText = 'ကျေးဇူးပြု၍ သင်ရေးစေလိုသော အကြောင်းအရာကို ဦးစွာဖြည့်စွက်ပါ။';
+                return;
+            }
+
+            // UI updates for loading
+            loader.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+            copyBtn.classList.add('hidden');
+            copySuccess.classList.add('hidden');
+            generateBtn.disabled = true;
+            generateBtn.innerText = 'ရေးသားနေသည်...';
+
+            try {
+                // Construct the payload for the Gemini API
+                const payload = {
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                };
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content.parts.length > 0) {
+                    const generatedText = data.candidates[0].content.parts[0].text;
+                    resultContainer.innerText = generatedText;
+                    copyBtn.classList.remove('hidden');
+                } else {
+                    resultContainer.innerText = 'တောင်းပန်ပါသည်။ Content ထုတ်လုပ်ရာတွင် အမှားအယွင်း ဖြစ်ပေါ်နေပါသည်။';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultContainer.innerText = 'တစ်ခုခုမှားယွင်းနေပါသည်။ နောက်တစ်ကြိမ် ထပ်ကြိုးစားကြည့်ပါ။\n' + error.message;
+            } finally {
+                // Restore UI
+                loader.classList.add('hidden');
+                resultContainer.classList.remove('hidden');
+                generateBtn.disabled = false;
+                generateBtn.innerText = 'Content ရေးသားခိုင်းမည်';
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            const textToCopy = resultContainer.innerText;
+            
+            // Create a temporary textarea element to copy the text
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            
+            try {
+                document.execCommand('copy');
+                copySuccess.classList.remove('hidden');
+                setTimeout(() => {
+                    copySuccess.classList.add('hidden');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+            
+            document.body.removeChild(tempTextArea);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            promptInput.value = '';
+            resultContainer.innerText = '';
+            copyBtn.classList.add('hidden');
+            copySuccess.classList.add('hidden');
+            // AI generated content will appear here will be shown
+            resultContainer.innerHTML = '<!-- AI generated content will appear here -->';
+        });
+
+        // Set current year in footer
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
+
